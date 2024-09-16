@@ -7,11 +7,11 @@ library(scatterpie)
 
 setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 
-source("~/R/newsletter/initial_setup.R")
+source("../../initial_setup.R")
 
-expand_type <- 
+expand_type <-
   function(tbl) {
-    tbl <- tbl |> 
+    tbl <- tbl |>
       mutate(
         type = case_when(
           type == "ՋԷԿ" ~ "Ջերմաէլեկտրակենտրոն (ՋԷԿ)",
@@ -29,36 +29,36 @@ electricity_forecast <- read_csv("electricity_forecast.csv") |> expand_type()
 #########################
 
 electricity_plot <-
-  electricity_data |> 
+  electricity_data |>
   filter(
     !grepl("ընդամենը|Այլ|ԳՋ|հողմային", type),
     !is.na(YoY_value)
-  ) |> 
-  arrange(date) |> 
-  group_by(date) |> 
+  ) |>
+  arrange(date) |>
+  group_by(date) |>
   mutate(
     pct_YoY = YoY_value/sum(YoY_value),
     year = year(date),
     date = date + months(1) - days(1)
-  ) |> 
-  group_by(year) |> 
+  ) |>
+  group_by(year) |>
   mutate(
     text = ifelse(date == max(date) & date != as.Date("2024-03-31"), pct_YoY, NA),
     text = ifelse(text <= 0.01, NA, text),
     text = percent(text, accuracy = 0.1)
-  ) |> 
-  ungroup() |> 
+  ) |>
+  ungroup() |>
   mutate(
     type = case_when(
       type == "Ջերմաէլեկտրակենտրոն (ՋԷԿ)" ~ "Thermal Power Plant (TPP)",
       type == "Հայկական ատոմային էլեկտրակայան (ՀԱԷԿ)" ~ "Armenian Nuclear Power Plant (ANPP)",
       type == "Հիդրոէլեկտրակայան (ՀԷԿ)" ~ "Hydroelectric Power Plant (HPP)",
       type == "արևային էլեկտրակայաններ" ~ "Solar Power Plants",
-      TRUE ~ as.character(type)  
+      TRUE ~ as.character(type)
     ),
     type = fct_relevel(type, "Thermal Power Plant (TPP)", "Armenian Nuclear Power Plant (ANPP)", "Hydroelectric Power Plant (HPP)"),
     type = fct_rev(type)
-  ) |> 
+  ) |>
   ggplot(aes(date, pct_YoY, fill = type, label = text)) +
   geom_area(alpha = 0.6) +
   geom_text(
@@ -87,26 +87,26 @@ electricity_forecast_plot1 <-
     month = month(date),
     year = year(date),
     model_name = str_remove(model_name, "Forecast ")
-  ) |> 
+  ) |>
   filter(
     !grepl("ընդամենը|Հողմային", type),
     !model_name %in% c("ets", "stlm"),
     grepl("year", period),
     month == 12
-  ) |> 
+  ) |>
   filter(
     !c(year == 2023 & model_name != "Actual Data")
-  ) |> 
+  ) |>
   mutate(
     year = ifelse(
       model_name == "Actual Data",
-      year, 
+      year,
       paste0(year, "\n", model_name)
     ),
     type = fct_reorder(type, value),
     type = fct_rev(type),
-  ) |> 
-  arrange(year) |> 
+  ) |>
+  arrange(year) |>
   group_by(year) |>
   mutate(
     pct = value / sum(value),
@@ -117,25 +117,25 @@ electricity_forecast_plot1 <-
       type == "Հայկական ատոմային էլեկտրակայան (ՀԱԷԿ)" ~ "Armenian Nuclear Power Plant (ANPP)",
       type == "Հիդրոէլեկտրակայան (ՀԷԿ)" ~ "Hydroelectric Power Plant (HPP)",
       type == "արևային էլեկտրակայաններ" ~ "Solar Power Plants",
-      TRUE ~ as.character(type)  
+      TRUE ~ as.character(type)
     ),
     type = fct_relevel(type, "Thermal Power Plant (TPP)", "Armenian Nuclear Power Plant (ANPP)", "Hydroelectric Power Plant (HPP)"),
     pct_text = ifelse(!grepl("TPP|HPP", type), "", pct_text),
     pct_text2 = ifelse(grepl("TPP|HPP", type), "", pct_text2)
-  ) |> 
-  ungroup() |> 
+  ) |>
+  ungroup() |>
   ggplot(aes(as.character(year), value, fill = type)) +
   geom_col(position = "dodge") +
   geom_errorbar(
     aes(ymin = ribbon_low , ymax = ribbon_high), position = "dodge"
   ) +
   geom_text(
-    aes(y = 100, label = pct_text), 
+    aes(y = 100, label = pct_text),
     vjust = 0.6,
     position = position_dodge(width = .9)
   ) +
   geom_text(
-    aes(y = 100, label = pct_text2), 
+    aes(y = 100, label = pct_text2),
     vjust = 2.3,
     position = position_dodge(width = .9)
   ) +
@@ -155,31 +155,31 @@ electricity_forecast_plot1 <-
   )
 
 
-electricity_forecast_plot2_data <- 
-  electricity_forecast %>% 
+electricity_forecast_plot2_data <-
+  electricity_forecast %>%
   filter(
     !grepl("ets", model_name),
     grepl("Monthly", period),
     !grepl("ընդամենը|Հողմային", type),
-  ) |> 
+  ) |>
   mutate(
     type = fct_reorder(type, value),
     type = fct_rev(type)
-  ) |> 
+  ) |>
   mutate(
     # type = case_when(
     #   type == "Ջերմաէլեկտրակենտրոն (ՋԷԿ)" ~ "Теплоэлектроцентраль (ТЭЦ)",
     #   type == "Հայկական ատոմային էլեկտրակայան (ՀԱԷԿ)" ~ "Армянская атомная электростанция (ААЭС)",
     #   type == "Հիդրոէլեկտրակայան (ՀԷԿ)" ~ "Гидроэлектростанция (ГЭС)",
     #   type == "արևային էլեկտրակայաններ" ~ "Солнечные электростанции",
-    #   TRUE ~ as.character(type)  
+    #   TRUE ~ as.character(type)
     # ),
     type = case_when(
       type == "Ջերմաէլեկտրակենտրոն (ՋԷԿ)" ~ "Thermal Power Plant (TPP)",
       type == "Հայկական ատոմային էլեկտրակայան (ՀԱԷԿ)" ~ "Armenian Nuclear Power Plant (ANPP)",
       type == "Հիդրոէլեկտրակայան (ՀԷԿ)" ~ "Hydroelectric Power Plant (HPP)",
       type == "արևային էլեկտրակայաններ" ~ "Solar Power Plants",
-      TRUE ~ as.character(type)  
+      TRUE ~ as.character(type)
     ),
     # model_name  = case_when(
     #   model_name == "Actual Data" ~ "Фактические данные",
@@ -192,8 +192,8 @@ electricity_forecast_plot2_data <-
     type = fct_inorder(type)
   )
 
-electricity_forecast_plot2 <- 
-  electricity_forecast_plot2_data |> 
+electricity_forecast_plot2 <-
+  electricity_forecast_plot2_data |>
   ggplot(aes(date, value, color = model_name, lty = model_name)) +
   facet_wrap(~type, scales = "free_y") +
   geom_smooth(
@@ -239,26 +239,26 @@ yerevan_centroids <- yerevan_map %>%
   mutate(
     x = st_coordinates(.)[,1],
     y = st_coordinates(.)[,2]
-  ) %>% 
+  ) %>%
   select(NAME, x, y, hec_damaged_pct, other_org_damaged_pct, total_damaged_cables) %>%
   filter(!is.na(hec_damaged_pct)) %>%  # Remove rows with NA values
-  pivot_longer(cols = c(hec_damaged_pct, other_org_damaged_pct), 
-               names_to = "damage_type", 
+  pivot_longer(cols = c(hec_damaged_pct, other_org_damaged_pct),
+               names_to = "damage_type",
                values_to = "value") %>%
-  st_drop_geometry() |> 
+  st_drop_geometry() |>
   pivot_wider(names_from = damage_type, values_from = value)
 
-total_row <- 
-  damage |> 
-  filter(district == "Ընդամենը") |> 
-  rename(NAME = district) |> 
+total_row <-
+  damage |>
+  filter(district == "Ընդամենը") |>
+  rename(NAME = district) |>
   mutate(
     x = 44.4,
     y = 40.1,
-  ) |> 
+  ) |>
   select(NAME, total_damaged_cables, x, y, hec_damaged_pct, other_org_damaged_pct)
 
-yerevan_centroids <- bind_rows(yerevan_centroids, total_row) |> 
+yerevan_centroids <- bind_rows(yerevan_centroids, total_row) |>
   mutate(
     NAME = case_when(
       NAME == "Արաբկիր" ~ "Arabkir",
@@ -271,7 +271,7 @@ yerevan_centroids <- bind_rows(yerevan_centroids, total_row) |>
     )
   )
 
-yerevan_map_plot <- 
+yerevan_map_plot <-
   ggplot() +
   geom_sf(data = yerevan_map) +
   geom_scatterpie(
@@ -321,7 +321,7 @@ yerevan_map_plot <-
     title = "Distribution of Cable Damage Across Yerevan Districts",
     subtitle = "Number of damaged cables for the period from January to August 2024",
     caption = "Author: Aghasi Tavadyan   |   Data from: ENA CJSC"
-  ) + 
+  ) +
   theme(
     panel.grid.major = element_blank(),
     axis.text = element_blank()
@@ -329,5 +329,3 @@ yerevan_map_plot <-
 
 ggsave(filename = "../plots/4_Yerevan_map.png", plot = yerevan_map_plot, width = 7, height = 7)
 ggsave(filename = "../plots/4_Yerevan_map.svg", plot = yerevan_map_plot, width = 7, height = 7)
-
-
