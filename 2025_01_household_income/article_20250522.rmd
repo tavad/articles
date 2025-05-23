@@ -167,6 +167,8 @@ This study utilizes anonymized microdata from Armenia's Integrated Living Condit
 
 **Ethics Statement**: This study utilizes anonymized microdata from Armenia's Integrated Living Conditions Survey, provided by the Statistical Committee of Armenia. As the data is publicly available and anonymized, formal ethics committee approval was not required for this secondary analysis.
 
+**Data Availability**: The complete code, processed datasets, and supplementary materials for this study are publicly available at: https://github.com/tavad/articles/tree/main/2025_01_household_income
+
 [^1]: Data available at: https://www.armstat.am/en/?nid=205
 [^2]: CPI data sourced from: https://www.cba.am/stat/stat_data_eng/6_CPI_eng.xls
 
