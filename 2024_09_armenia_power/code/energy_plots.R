@@ -26,6 +26,7 @@ expand_type <-
 electricity_data <- read_csv("electricity_production_arm.csv") |> expand_type()
 electricity_forecast <- read_csv("electricity_forecast.csv") |> expand_type()
 
+
 #########################
 
 electricity_plot <-
@@ -67,6 +68,7 @@ electricity_plot <-
   scale_x_date(date_breaks = "1 year", date_labels = "%Y") +
   scale_y_continuous(breaks = seq(0, 1, 0.1), labels = percent_format()) +
   scale_fill_manual(values = new_palette_colors[c(2,4,6,8)]) +
+  guides(fill = guide_legend(nrow = 2)) +
   labs(
     x = NULL,
     y = NULL,
@@ -76,10 +78,70 @@ electricity_plot <-
     caption = "* Latest data presented as of July 2024\n\nAuthor: Aghasi Tavadyan    |    Forecast performed by the author, data source: pcrc.am"
   )
 
-ggsave(filename = "../plots/1_electricity_share_plot.png", plot = electricity_plot, width = 10, height = 7)
-ggsave(filename = "../plots/1_electricity_share_plot.svg", plot = electricity_plot, width = 10, height = 7)
+ggsave(filename = "../plots/1_electricity_share_plot.png", plot = electricity_plot, width = 8, height = 6)
+ggsave(filename = "../plots/1_electricity_share_plot.svg", plot = electricity_plot, width = 8, height = 6)
 
 ###############################
+
+# russian plot
+
+
+electricity_plot <-
+  electricity_data |>
+  filter(
+    !grepl("ընդամենը|Այլ|ԳՋ|հողմային", type),
+    !is.na(YoY_value)
+  ) |>
+  arrange(date) |>
+  group_by(date) |>
+  mutate(
+    pct_YoY = YoY_value/sum(YoY_value),
+    year = year(date),
+    date = date + months(1) - days(1)
+  ) |>
+  group_by(year) |>
+  mutate(
+    text = ifelse(date == max(date) & date != as.Date("2024-03-31"), pct_YoY, NA),
+    text = ifelse(text <= 0.01, NA, text),
+    text = percent(text, accuracy = 0.1)
+  ) |>
+  ungroup() |>
+  mutate(
+    type = case_when(
+      type == "Ջերմաէլեկտրակենտրոն (ՋԷԿ)" ~ "Тепловая электростанция (ТЭС)",
+      type == "Հայկական ատոմային էլեկտրակայան (ՀԱԷԿ)" ~ "Армянская атомная электростанция (ААЭС)",
+      type == "Հիդրոէլեկտրակայան (ՀԷԿ)" ~ "Гидроэлектростанция (ГЭС)",
+      type == "արևային էլեկտրակայաններ" ~ "Солнечные электростанции",
+      TRUE ~ as.character(type)
+    ),
+    type = fct_relevel(type, "Тепловая электростанция (ТЭС)", "Армянская атомная электростанция (ААЭС)", "Гидроэлектростанция (ГЭС)"),
+    type = fct_rev(type)
+  ) |>
+  ggplot(aes(date, pct_YoY, fill = type, label = text)) +
+  geom_area(alpha = 0.6) +
+  geom_text(
+    position = position_stack(vjust = 0.5)
+  ) +
+  scale_x_date(date_breaks = "1 year", date_labels = "%Y") +
+  scale_y_continuous(breaks = seq(0, 1, 0.1), labels = percent_format()) +
+  scale_fill_manual(values = new_palette_colors[c(2,4,6,8)]) +
+  guides(fill = guide_legend(nrow = 2)) +
+  labs(
+    x = NULL,
+    y = NULL,
+    fill = NULL,
+    title = "Структура производства электроэнергии в Армении по источникам",
+    subtitle = "2016-2024, годовые данные*",
+    caption = "* Последние данные представлены по состоянию на июль 2024\n\nАвтор: Агаси Тавадян    |    Прогноз выполнен автором, источник данных: pcrc.am"
+  )
+
+ggsave(filename = "../plots/1_electricity_share_plot_ru.png", plot = electricity_plot, width = 10, height = 8)
+ggsave(filename = "../plots/1_electricity_share_plot_ru.svg", plot = electricity_plot, width = 10, height = 8)
+
+
+##################################
+
+
 
 electricity_forecast_plot1 <-
   electricity_forecast |>
@@ -142,11 +204,12 @@ electricity_forecast_plot1 <-
   scale_y_continuous(labels = number_format()) +
   scale_fill_manual(values = new_palette_colors[c(2,4,6,8)]) +
   # scale_fill_brewer(type = "qual", palette = 3) +
+  guides(fill = guide_legend(nrow = 2)) +
   labs(
     x = NULL,
     y = NULL,
     fill = NULL,
-    title = "Armenia's Electricity Generation: Annual Trends and Projections by Source",
+    title = "Armenia's Electricity Generation:\nAnnual Trends and Projections by Source",
     subtitle = "2015-2026, million kWh, percentage shares are given at the bottom of the chart",
     caption = "Author: Aghasi Tavadyan    |    Forecast performed by the author, data source: pcrc.am"
   ) +
@@ -212,18 +275,20 @@ electricity_forecast_plot2 <-
     y = NULL,
     color = NULL,
     linetype = NULL,
-    title = "Monthly Electricity Generation in Armenia: Trends and Projections by Source",
+    title = "Monthly Electricity Generation in Armenia:\nTrends and Projections by Source",
     subtitle = "million kWh, by types of power plants",
     caption = "Author: Aghasi Tavadyan    |    Forecast performed by the author, data source: pcrc.am"
   )
 
-ggsave(filename = "../plots/2_electricity_forecast_plot1.png", plot = electricity_forecast_plot1, width = 10, height = 7)
-ggsave(filename = "../plots/2_electricity_forecast_plot1.svg", plot = electricity_forecast_plot1, width = 10, height = 7)
+ggsave(filename = "../plots/2_electricity_forecast_plot1.png", plot = electricity_forecast_plot1, width = 8, height = 6)
+ggsave(filename = "../plots/2_electricity_forecast_plot1.svg", plot = electricity_forecast_plot1, width = 8, height = 6)
 
-ggsave(filename = "../plots/3_electricity_forecast_plot2.png", plot = electricity_forecast_plot2, width = 10, height = 7)
-ggsave(filename = "../plots/3_electricity_forecast_plot2.svg", plot = electricity_forecast_plot2, width = 10, height = 7)
+ggsave(filename = "../plots/3_electricity_forecast_plot2.png", plot = electricity_forecast_plot2, width = 8, height = 6)
+ggsave(filename = "../plots/3_electricity_forecast_plot2.svg", plot = electricity_forecast_plot2, width = 8, height = 6)
 
 ###################################################
+
+library(sf)
 
 damage <-
   read_csv("electrical_network_damage.scv")

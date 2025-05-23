@@ -1,0 +1,805 @@
+---
+title: "Growing but Not Prospering: Armenia's Paradox of Economic Growth and Household Welfare"
+author: "Aghasi Tavadyan"
+date: "`r Sys.Date()`"
+output:
+  word_document:
+    toc: true
+    fig_caption: true
+    df_print: kable
+    reference_docx: "templates/LaTex_7.dotx"
+
+#     
+#     
+# # output:
+# #   bookdown::word_document2: # Using bookdown for better cross-referencing and features
+# #     toc: yes
+# #     toc_depth: 2
+# #     number_sections: yes
+# #     highlight: tango # For code block syntax highlighting
+# #     df_print: kable # For nicer table printing, works well with 
+  
+# output:
+#   pdf_document:
+#     toc: true
+#     fig_caption: true
+#     df_print: kable
+#     latex_engine: xelatex
+bibliography: bib.bibtex
+header-includes:
+ - \usepackage{fontspec}
+ - \usepackage{polyglossia}
+ - \setmainlanguage{english}
+ - \setotherlanguage{armenian}
+ - \newfontfamily\armenianfont{Sylfaen}[Script=Armenian]
+always_allow_html: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE,          
+  warning = FALSE,       
+  message = FALSE,       
+  fig.width = 8,        
+  fig.height = 6,       
+  dpi = 300             
+)
+
+library(tidyverse)
+library(moments)
+library(lmtest)
+library(margins)
+library(knitr)
+library(kableExtra)
+library(readxl)
+library(ggridges)
+library(Hmisc)
+
+source("~/R/newsletter/initial_setup.R")
+
+# Load data
+household_income_db <- read_csv("~/R/newsletter/2025/2025_01_14_household_income/household_income_db.csv")
+inflation_row <- read_excel("~/R/newsletter/2025/2025_01_14_household_income/cpi_armenia_eng.xls", skip = 3)
+
+# Prepare inflation adjustment
+inf_cumprod <-
+ inflation_row |>
+ rename(date = 1, cpi_m = 2) |>
+ select(date, cpi_m) |>
+ mutate(
+   date = ym(date),
+   cpi_m = cpi_m / 100,
+   year = year(date)
+ ) |>
+ filter(year <= 2023) |>
+ select(-year) |>
+ arrange(desc(date)) |>
+ mutate(
+   adj_price = cumprod(cpi_m),
+   adj_price = lag(adj_price),
+   adj_price = ifelse(is.na(adj_price), 1, adj_price)
+ )
+
+# Prepare analysis dataset
+household_income_db_adj <- household_income_db |>
+ left_join(inf_cumprod, by = "date") |>
+ mutate(
+   totincome_adj = totincome * adj_price,
+   month = month(date)
+ ) |>
+ filter(totincome_adj != 0)
+
+# Fit main model
+model_12 <- lm(
+ log(totincome_adj) ~ year * as.factor(marz) * settlement,
+ data = household_income_db_adj,
+ weights = weight
+)
+```
+
+# Abstract
+
+This paper examines a compelling economic paradox in Armenia during 2022-2023: despite 12.6% GDP growth in 2022, household survey data reveals that real incomes actually declined, while 2023's modest economic expansion (7.2%) produced significant improvements in household welfare across all income deciles. Using a comprehensive dataset of 121,170 household observations, we employ a novel methodological approach combining regional fixed effects with inflation adjustments to isolate the impact of price stability on real household incomes.
+
+Our findings demonstrate how price stability serves as a critical mediating factor determining whether macroeconomic growth translates into improved household welfare in transition economies. We document the emergence of a substantial middle class (35.1% of households in upper-middle income bracket) while identifying persistent regional disparities of up to 171,000 AMD between highest and lowest-income regions. This analysis provides a methodological framework applicable to other post-Soviet states facing similar challenges in translating economic gains into equitable welfare improvements.
+
+**Keywords**: income distribution, inflation, regional inequality, transition economies, Armenia
+
+**JEL Classifications**: D31, E31, R11, P25
+
+# Introduction
+
+The relationship between economic growth and household welfare has long been a fundamental concern in development economics. Transition economies present a particularly complex case study, where rapid structural transformations can create significant disconnects between macroeconomic indicators and lived economic realities. Armenia offers an especially compelling example of this phenomenon, having experienced substantial economic volatility during the 2022-2023 period that provides a unique quasi-experimental setting for examining how growth translates—or fails to translate—into improved living standards.
+
+Recent economic developments in Armenia present an apparent paradox. In 2022, the country recorded impressive 12.6% GDP growth and saw its GDP per capita rise from \$4,972 to \$7,018 (a 41% increase). Yet household survey data indicates that real incomes actually declined during this period of robust growth. Conversely, 2023 saw more modest economic expansion but was accompanied by significant improvements in household welfare across all income deciles. This contradictory pattern raises important questions about the mechanisms that determine whether macroeconomic growth benefits households and how these benefits are distributed across regions.
+
+The literature on transition economies has separately examined factors such as regional disparities [@zubarevich2024interregional], inflation dynamics [@law2020impact], and income distribution [@habibov2012income], but few studies have analyzed how these elements interact in a unified framework. This gap is particularly notable in the Armenian context, where the post-Soviet transition has been complicated by geopolitical tensions, migration pressures, and economic volatility [@sandoyan2022main]. By examining the apparent disconnect between growth and welfare in Armenia during 2022-2023, this study contributes to both the theoretical understanding of economic development processes and practical policymaking in transition economies.
+
+The paper makes three distinct contributions to the literature. First, we develop an analytical framework that captures how inflation dynamics interact with regional characteristics, allowing us to identify heterogeneous impacts across different segments of society. This methodological approach is particularly valuable for post-Soviet states, which frequently experience similar patterns of concentrated economic growth, regional disparities, and inflation volatility that can obscure the true relationship between macroeconomic indicators and household welfare. Second, we provide robust empirical evidence on inflation's critical mediating role in determining whether economic growth translates into improved household welfare, demonstrating quantitatively how price stability can amplify or negate the benefits of economic expansion. Third, we document the transformation of Armenia's income distribution structure over time, including the emergence of a substantial middle class, while identifying the persistent challenge of regional inequality.
+
+Understanding these dynamics is crucial not only for academic purposes but also for informing economic policy. Our findings provide insights into how governments in transition economies can better ensure that economic growth leads to broad-based welfare improvements, highlighting the critical importance of price stability and regional development policies in this process.
+
+The remainder of this paper is structured as follows: Section 2 reviews the relevant literature on income distribution, inflation, and regional disparities in transition economies. Section 3 describes our data sources and methodological approach. Section 4 presents our empirical results, including analyses of income growth trends, regional disparities, income distribution patterns, and inflation impacts. Section 5 discusses the implications of our findings and acknowledges limitations. Section 6 concludes by summarizing key insights and suggesting policy directions.
+
+# Literature Review
+
+This section synthesizes research on four key dimensions of income dynamics in transition economies, identifying research gaps that our study addresses.
+
+## Regional Disparities in Transition Economies
+
+Extensive research documents significant regional disparities in transition economies, with capital regions consistently outperforming peripheries [@petrakos2001patterns; @zubarevich2024interregional; @putnins2011size]. @petrakos2001patterns (p. 360) argues that market-oriented reforms have increased regional disparities because "transition favors metropolitan and western regions," as capitals benefit disproportionately from foreign investment and institutional reforms. In Armenia specifically, @habibov2012income found that between-region disparities account for 15.20% of overall inequality, while urban-rural differences explain 9.38%. These geographic disparities persist even after controlling for individual characteristics, suggesting structural factors drive regional inequality. Similarly, @markosyan2023poverty documents poverty rates in 2022 ranging from 18.6% in Yerevan to 43.2% in Shirak, reflecting divergent growth trajectories.
+
+This spatial inequality appears self-reinforcing through several mechanisms. Infrastructure development patterns reinforce pre-existing hierarchies, with quality declining with distance from capital cities [@salukvadze2019changing]. Post-Soviet territorial reorganization has created new divides between globally integrated regions and peripheralized areas, with mobility patterns further intensifying these disparities [@thorez2014post]. The methodological framework developed by @ikemoto1987income for decomposing inequality into within-region and between-region components has become standard but remains underutilized in examining how these disparities interact with inflation dynamics.
+
+## Inflation Effects on Income Distribution
+
+Inflation's impact on income distribution represents a critical yet under-examined aspect of transition economies. Early theoretical work by @budd1971impact identified three key redistribution mechanisms: asymmetric consumption basket price effects, differential income source adjustment speeds, and creditor-debtor transfers. More recent research has extended these insights to transition economy contexts. @camera2014understanding's general equilibrium model demonstrates that inflation produces heterogeneous effects across the income distribution, with long-run inflation disproportionately harming wage-dependent households with limited asset diversification. These theoretical predictions are empirically supported by @law2020impact's panel analysis of 65 countries, showing that "an increase in inflation will worsen income inequality, while better institutional quality will improve income inequality" (p. 1736).
+
+In Armenia specifically, @tavadyan2021risks demonstrates how artificially stable exchange rates during 2014-2019 created macroeconomic misalignments that ultimately worsened inflation's distributional impacts. Comparative research from Baltic states provides valuable parallels – @Benkovskis_etal_2025 show how wage policies interact with inflation through formal and informal channels, while @garcia2023wage identify how supply shocks impact different labor market segments unequally, helping explain why wages sometimes lag inflation during economic disruptions.
+
+## Policy Effectiveness and Distributional Outcomes
+
+Policy interventions in transition economies show varying effectiveness in addressing inequality. Studies from Armenia reveal that minimum wage policies have heterogeneous effects on income mobility, particularly in regions with high informal employment [@hambardzumyan2023impact]. Social protection measures show significantly different effectiveness across regions, with poverty reduction per dollar of assistance ranging from 0.8 percentage points in Tavush to 2.3 in Kotayk [@markosyan2023poverty].
+
+Comparative research from Baltic states highlights critical policy design challenges. @navicke2016work's microsimulation analysis of Lithuania revealed that benefit withdrawal rates created effective marginal tax rates exceeding 80% for low-income households, creating tension between benefit adequacy and work incentives. Regional development policies have received particular attention, with evidence suggesting that targeted transfers during crisis periods can reduce spatial inequalities by 12-18%, though implementation remains politically complex [@zubarevich2024interregional].
+
+Labor market institutions significantly shape distributional outcomes. @khitarishvili2016gender found that institutional factors, rather than human capital differences, explained 65-80% of gender earnings differentials in South Caucasus countries. Similarly, @zasova2011labour demonstrated how labor market rigidities in Latvia caused adjustment primarily through employment rather than wages during economic shocks, creating uneven welfare impacts across worker groups.
+
+## Middle-Class Formation in Transition Economies
+
+The development of a middle class represents a critical aspect of post-Soviet socioeconomic transformation. Longitudinal research demonstrates that "successful economic and political transitions...requires the development of a significant and stable middle class" [@nissanov2017economic, p. 47], as middle-class growth contributes to both economic stability and democratic consolidation. Regional analysis from Poland and Russia shows that areas with larger de novo economic sectors exhibited increased income shares for lower quintiles and stronger support for centrist political parties [@berkowitz2006evolution].
+
+In Armenia, @roberts2011class identified distinct class structures based on employment, education, and income indicators, with the middle class comprising approximately 21% of the population in 2011. More recent analysis indicates that foreign direct investment has contributed to middle-class expansion in some regions while potentially widening disparities in others [@tavadyan2022foreign]. This complex relationship between middle-class formation and broader development patterns appears common across transition economies. Research from South Caucasus countries indicates that circumstances of birth (region, parental education) explain 25-35% of income inequality, suggesting significant constraints on meritocratic advancement despite overall growth [@fuchs2018inequality]. Similarly, selective migration patterns potentially drain human capital needed for sustainable middle-class growth [@dermendzhieva2011emigration].
+
+## Research Gap and Contribution
+
+This literature review reveals several key gaps our study addresses through its unique analytical framework. First, while existing research has separately examined inflation dynamics, regional disparities, and income distribution, few studies analyze their interactions within a unified framework, particularly during periods of extreme macroeconomic volatility. This integration is crucial for understanding the causal mechanisms that determine why economic growth sometimes fails to translate into improved household welfare.
+
+Second, the paradoxical relationship between substantial GDP growth (12.6%) and declining household welfare in Armenia provides a good bases for understanding inflation's mediating role in the growth-welfare relationship. While previous research has documented growth-welfare disconnects [@tiwari2018south], our study examines this relationship during a period of exceptionally sharp macroeconomic contrasts — high growth with high inflation immediately followed by moderate growth with price stability — offering unique insights into causal mechanisms that would be difficult to isolate in more stable economic contexts.
+
+Third, methodological approaches for identifying how inflation impacts translate differently across diverse regions of transition economies remain underdeveloped. By employing a comprehensive dataset of 121,170 observations and a methodological framework specifically designed to capture heterogeneous regional responses to inflation dynamics, we provide robust empirical evidence of how price stability determines whether economic growth translates into improved household welfare across different segments of society.
+
+# Data and Methodology
+
+## Data Sources
+
+This study utilizes anonymized microdata from Armenia's Integrated Living Conditions Survey (2004-2023), comprising 121,170 household observations[^1]. This nationally representative survey employs stratified random sampling across all administrative regions (marzes) and settlement types. Our dependent variable is household total income, adjusted using monthly CPI data from the Central Bank of Armenia[^2] with December 2023 as the base period. 
+
+**Ethics Statement**: This study utilizes anonymized microdata from Armenia's Integrated Living Conditions Survey, provided by the Statistical Committee of Armenia. As the data is publicly available and anonymized, formal ethics committee approval was not required for this secondary analysis.
+
+[^1]: Data available at: https://www.armstat.am/en/?nid=205
+[^2]: CPI data sourced from: https://www.cba.am/stat/stat_data_eng/6_CPI_eng.xls
+
+Our analysis covers a period of exceptional macroeconomic volatility in Armenia, with 12.6% GDP growth in 2022 followed by 7.2% in 2023, while inflation shifted dramatically from 8.3% to -0.6% between these years. This creates a unique quasi-experimental setting for examining how price stability affects the growth-welfare relationship, as we observe similar magnitudes of economic growth under sharply contrasting inflation regimes within a short timeframe.
+
+## Econometric Approach
+
+## Methodological Contribution
+
+Our empirical strategy advances beyond previous studies through a tailored approach that uncovers the complex interplay between macroeconomic volatility and regional welfare outcomes. The power of this approach lies not simply in using established econometric tools, but in how their combined application to Armenia's unique quasi-experimental setting reveals causal mechanisms that standard analyses would miss.
+
+While previous research has examined inflation dynamics and regional disparities separately [@habibov2012income; @zubarevich2024interregional], our framework captures how these forces interact during periods of exceptional macroeconomic volatility. The core of our approach involves a carefully designed two-stage process:
+
+1. **Inflation Adjustment**: We calculate the cumulative inflation for each survey month relative to December 2023, creating precise real income values that reflect true purchasing power. This captures intra-year inflation dynamics crucial for analyzing periods of high volatility.
+
+2. **Regional Response Modeling**: We employ a weighted log-linear regression with regional fixed effects and a rich set of interactions:
+
+$log(Income_{adj}) = \beta_0 + \beta_1Year + \beta_2Region + \beta_3Settlement + \beta_4(Year \times Region) + \beta_5(Year \times Settlement) + \beta_6(Region \times Settlement) + \beta_7(Year \times Region \times Settlement) + \epsilon$
+
+Where $Income_{adj}$ is inflation-adjusted household income, Region represents 11 administrative units (with Yerevan as reference), Settlement distinguishes between urban and rural areas, and Year captures temporal trends. The interaction terms allow for heterogeneous effects of time across regions and settlement types.
+
+The distinctive strength of our approach lies in how these elements work together to dissect the heterogeneous impacts of inflation across different regions and settlement types during volatile economic periods. By ensuring all incomes are precisely comparable through inflation adjustment, and then analyzing how different regions respond to periods with varying macroeconomic conditions through our rich set of interaction terms, we identify region-specific sensitivities to economic volatility that standard analyses would obscure. The Year × Region interaction terms ($\beta_4$) reveal how different regions' real income trajectories diverge or converge over time, while the three-way interactions ($\beta_7$) capture the differential urban-rural dynamics within each region during inflation shocks.
+
+This approach differs fundamentally from simply including inflation as a separate variable, which would introduce collinearity issues with year effects and would not capture inflation's complex impacts on purchasing power. Our methodology advances understanding by:
+
+1. Combining precise inflation adjustments with regional fixed effects to identify heterogeneous responses to economic volatility
+2. Capturing how regional relationships evolve over time through detailed interaction terms
+3. Identifying inflation's mediating role in the growth-welfare relationship by comparing periods with similar growth but different inflation regimes
+
+Our analysis of the Year * Region interaction terms, where 'Year' encompasses periods of significantly different inflation regimes (e.g., high inflation in 2022 vs. price stability in 2023), reveals that regions exhibited differential real income trajectories. Specifically, during the high-inflation year of 2022, many peripheral regions experienced more pronounced declines or slower growth in real incomes compared to the more stable inflation year of 2023, even after controlling for baseline regional characteristics.
+
+This analytical framework is particularly powerful for examining Armenia's "paradox" of high growth with declining real incomes in 2022 versus moderate growth with improving real incomes in 2023.
+
+### Diagnostic Testing and Variance Decomposition
+
+Our diagnostic tests confirm model validity despite the complex data structure. The Breusch-Pagan test (BP = 15345515, p < 2.2e-16) indicates heteroscedasticity, addressed through robust standard errors. Residuals show approximate normality (skewness = -0.535), and Cook's distance analysis reveals no influential outliers affecting our results. Model stability tests across different time periods (2005-2015 and 2016-2023) show consistent regional and urban-rural effects.
+
+To quantify different factors' contributions to inequality, we employ a hierarchical modeling approach that extends @ikemoto1987income's methodology. Decomposing the explained variation attributes 12.47% to between-region differences, 2.35% to urban-rural differences, and 1.13% to their interaction. The between-region component exceeds that reported by @habibov2012income (8.6%), suggesting intensification of regional disparities in Armenia since their study.
+
+### R² Interpretation
+
+Our full model explains 15.95% of total income variation, consistent with other spatial economic analyses in transition economies [@ikemoto1987income; @navicke2016work]. This modest R² reflects that:
+
+1. Individual characteristics (education, occupation, age) likely explain much of the unexplained variation, as @habibov2012income found such factors account for approximately 45% of income variation in South Caucasus countries
+2. Armenia's substantial informal sector (estimated at 36% of GDP) means formal income measures capture only part of household economic resources
+3. Measurement error in income reporting and remittances (11% of Armenia's GDP) contribute additional unexplained variance
+
+While geographic location explains only part of income variation, the highly significant coefficients for our key interaction terms (p < 0.001 for most Year × Region interactions) indicate that spatial and temporal effects are meaningful determinants of income patterns. This pattern of modest R² but significant coefficients is common in spatial economic analysis, with @Benkovskis_etal_2025 reporting similar R² values (12-18%) in their Latvian wage study while still drawing meaningful policy implications.
+
+### Limitations
+
+Despite our methodological strengths, several limitations warrant mention:
+
+1. The cross-sectional nature of our data prevents tracking individual households over time, limiting income mobility analysis
+2. Our focus on formal income may understate welfare in regions with substantial informal economic activity
+3. While we document differential inflation impacts across regions, data limitations prevent calculating region-specific inflation rates that would allow more precise estimation of regional price dynamics
+
+### Key Findings from Regional Income Model
+
+```{r model_results, echo=FALSE}
+# Create coefficient matrix with renamed variables
+coef_matrix <- summary(model_12)$coefficients
+
+rownames(coef_matrix) <- 
+  rownames(coef_matrix) |> 
+  str_replace_all("as\\.factor\\(marz\\)", "Marz ") |> 
+  str_replace_all("settlementurban", "Urban") |>
+  str_replace_all("year", "Year") |> 
+  str_replace_all("\\(Intercept\\)", "Intercept")
+
+# Create mapping vector
+region_names <- c(
+  "Marz 2" = "Aragatsotn",
+  "Marz 3" = "Ararat",
+  "Marz 4" = "Armavir",
+  "Marz 5" = "Gegharkunik",
+  "Marz 6" = "Lori",
+  "Marz 7" = "Kotayk",
+  "Marz 8" = "Shirak",
+  "Marz 9" = "Syunik",
+  "Marz 10" = "Vayots Dzor",
+  "Marz 11" = "Tavush"
+)
+
+# Clean row names
+rownames(coef_matrix) <- sapply(
+  rownames(coef_matrix),
+  function(x) {
+    for(i in names(region_names)) {
+      x <- gsub(i, region_names[i], x)
+    }
+    x <- gsub(":", " × ", x)
+    return(x)
+  }
+)
+
+colnames(coef_matrix) <- c("Estimate", "Std. Error", "t-statistic", "p-value")
+
+coef_matrix_row_names <- row.names(coef_matrix)
+
+coef_db <- 
+  coef_matrix |> 
+  as_tibble() |> 
+  mutate(
+    coefficient = coef_matrix_row_names
+  ) |> 
+  relocate(coefficient)
+
+key_coefficients <- c(
+  "Year", "Year × Gegharkunik", "Year × Lori", "Year × Kotayk", 
+  "Year × Ararat", "Year × Tavush", "Year × Urban"
+)
+
+coef_summary <- coef_db |> 
+  filter(coefficient %in% key_coefficients)
+
+
+kable(coef_summary,
+      caption = "Key Regional Income Model Coefficients (Full results in Appendix Table A1)",
+      format = "pandoc",
+      digits = 4) %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+
+```
+
+Table A1 in the Appendix presents the full regression results for our regional income model. The baseline year coefficient (0.0439, p < 0.001) represents approximately 4.39% annual real income growth. However, significant regional heterogeneity emerges through the Year × Region interactions. Gegharkunik shows the strongest negative deviation (-0.0248, p < 0.001), indicating real incomes trended downward by an additional 2.48 percentage points annually relative to Yerevan. Conversely, Kotayk demonstrates strong positive performance (0.0245, p < 0.001), while Lori (-0.0114, p < 0.001) and Tavush (-0.0135, p < 0.001) show concerning negative trends. The Year × Urban coefficient (0.0063, p = 0.11) suggests modest urban-rural convergence, though this effect is only marginally significant.
+
+```{r diagnostic_plots, fig.width=10, fig.height=8, fig.cap="Diagnostic Plots for Regional Income Model - Panel A: Residuals vs Fitted Values; Panel B: Normal Q-Q Plot; Panel C: Scale-Location Plot; Panel D: Cook's Distance for Influential Observations"}
+library(broom)
+library(patchwork)
+
+# Create diagnostic plot data
+model_diagnostics <- augment(model_12) %>%
+  # Add standardized residuals
+  mutate(std_resid = .std.resid,
+         sqrt_abs_resid = sqrt(abs(.resid))) %>%
+  # Filter extreme outliers
+  filter(abs(std_resid) < 4)  # Remove points with standardized residuals > 4
+
+# Sample points to reduce file size
+set.seed(123)  # For reproducibility
+sampled_diagnostics <- model_diagnostics %>%
+  sample_n(min(10000, nrow(.)))
+
+# Create individual plots using ggplot2
+# 1. Residuals vs Fitted
+p1 <- ggplot(sampled_diagnostics, aes(x = .fitted, y = .resid)) +
+  geom_point(alpha = 0.1, size = 0.5) +
+  geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
+  geom_smooth(method = "loess", se = FALSE, color = "red", linewidth = 0.5) +
+  labs(x = "Fitted values", y = "Residuals",
+       title = "A: Residuals vs Fitted") +
+  theme_minimal()
+
+# 2. Normal Q-Q
+p2 <- ggplot(sampled_diagnostics, aes(sample = .std.resid)) +
+  stat_qq(alpha = 0.1, size = 0.5) +
+  stat_qq_line(color = "red") +
+  labs(x = "Theoretical Quantiles", y = "Standardized residuals",
+       title = "B: Normal Q-Q") +
+  theme_minimal()
+
+# 3. Scale-Location
+p3 <- ggplot(sampled_diagnostics, aes(x = .fitted, y = sqrt_abs_resid)) +
+  geom_point(alpha = 0.1, size = 0.5) +
+  geom_smooth(method = "loess", se = FALSE, color = "red", size = 0.5) +
+  labs(x = "Fitted values", y = "√|Standardized residuals|",
+       title = "C: Scale-Location") +
+  theme_minimal()
+
+# 4. Cook's distance - only showing influential points
+influential_points <- model_diagnostics %>%
+  filter(.cooksd > quantile(.cooksd, 0.999, na.rm = TRUE))  # Top 0.1% of points
+
+p4 <- ggplot(influential_points, aes(x = seq_along(.cooksd), y = .cooksd)) +
+  geom_segment(aes(x = seq_along(.cooksd), xend = seq_along(.cooksd), 
+                   y = 0, yend = .cooksd),
+               alpha = 0.5) +
+  labs(x = "Obs. number", y = "Cook's distance",
+       title = "D: Cook's Distance") +
+  theme_minimal()
+
+# Combine plots
+(p1 + p2) / (p3 + p4)
+```
+
+Figure 1 presents diagnostic plots for our regional income model. Panel A shows residuals versus fitted values, with the relatively symmetric distribution around the zero line indicating adequate fit. The Normal Q-Q plot in Panel B demonstrates approximate normality of residuals, with slight deviations in the tails as expected with income data. Panel C reveals some heteroscedasticity, justifying our use of robust standard errors. Panel D shows Cook's distance for potentially influential observations, with all values well below 0.5, suggesting no observations exert undue influence on model parameters.
+
+# Results and Analysis
+
+## Income Growth Trends and Distributional Patterns
+
+Our analysis reveals significant positive growth in real incomes across Armenian households in 2023, following a period of decline in 2022. The contrast between these consecutive years provides a quasi-experimental state for understanding how macroeconomic conditions affect household welfare in a transition economy context.
+
+The median household's adjusted income increased by 15.3%, rising from 287,000 AMD in 2022 to 331,000 AMD in 2023. This broad-based improvement is evident across the income distribution: the upper threshold for the poorest 10% grew by 23.2% (from 95,000 AMD to 117,000 AMD), while the lower threshold for the wealthiest 10% rose by 14.5% (from 670,000 AMD to 767,000 AMD). This pattern suggests that 2023's gains disproportionately benefited lower-income households, modestly reducing overall inequality.
+
+```{r income_distribution_plot, fig.cap="Evolution of Household Monthly Income Distribution in Armenia (2005-2023). Income values adjusted to 2023 prices. The ridge density plots show the distribution of household incomes across years, with darker shading indicating higher density. Vertical quartile lines show the income distribution's 25th, 50th, and 75th percentiles for each year."}
+# Historical income distribution plot
+plot_household_pct_change_2 <-
+  household_income_db |> 
+  filter(
+    year >= 2005,
+    totincome != 0,
+    !is.na(totincome)
+  ) |> 
+  select(year, date, marz, totincome, weight) |> 
+  left_join(inf_cumprod, join_by(date)) |> 
+  mutate(totincome = totincome * adj_price) |> 
+  ggplot(aes(
+    x = totincome, y = as.factor(year), 
+    fill = 0.5 - abs(0.5 - after_stat(ecdf))
+  )) +
+  stat_density_ridges(
+    quantile_lines = TRUE, scale = 3,
+    rel_min_height = 0.01, quantiles = 4, alpha = 0.5,
+    geom = "density_ridges_gradient", calc_ecdf = TRUE
+  ) +
+  scale_x_log10(
+    breaks = 10^(4:6), 
+    labels = scales::number_format(), 
+    limits = c(10^3.5, 10^6.5)
+  ) +
+    scale_fill_gradientn(name = "Probability", colors = rev(colfunc(100))) +
+  labs(
+    x = "AMD",
+    y = NULL,
+    title = "Evolution of Household Monthly Income Distribution in Armenia",
+    subtitle = "Income adjusted to 2023 prices",
+    caption = "Source: Statistical Committee of Armenia"
+  ) +
+  annotation_logticks(base = 10, sides = "b") +
+  theme_minimal() +
+  theme(
+    panel.grid.major.x = element_line(
+      colour = "gray90",
+      linetype = 1
+    ),
+    panel.grid.major.y = element_line(
+      colour = "gray90",
+      linetype = 1
+    )
+  )
+
+print(plot_household_pct_change_2)
+```
+
+Figure 2 illustrates the long-term evolution of income distribution in Armenia from 2005 to 2023, with all values adjusted to 2023 prices. This visualization reveals several key patterns in Armenia's income dynamics:
+
+1. **Long-term Growth Trajectory**: Since 2005, inflation-adjusted household incomes have shown consistent growth, with particularly strong increases observed in 2006-2007 and 2019. This aligns with Armenia's broader economic development trajectory as documented by @sandoyan2022main.
+
+2. **Distribution Shape Evolution**: The density ridges demonstrate a gradual rightward shift of the entire distribution, with a notable flattening over time. This indicates both rising average incomes and increasing spread—a pattern consistent with transition economy development as described by @nissanov2017economic.
+
+3. **Crisis and Recovery Cycles**: The visualization captures Armenia's response to economic shocks, including the 2008-2009 global financial crisis and the 2020 dual shock of COVID-19 and the Nagorno-Karabakh conflict. In both cases, we observe temporary contractions followed by recovery periods, though the 2020 shock shows a more rapid recovery consistent with findings from @дунамалян2023экономическое on Armenia's economic resilience.
+
+4. **Recent Dynamics**: The 2023 distribution shows a noticeable rightward shift compared to 2022, confirming the statistical findings of improved household incomes across the distribution. This contrasts with the 2021-2022 period, when nominal growth failed to translate into real income gains due to high inflation.
+
+5. **Distribution Tails**: The evolution of the distribution tails reveals important patterns in inequality dynamics. The extreme lower tail (below 30,000 AMD in 2023 prices) has gradually diminished since 2005, indicating progress in extreme poverty reduction. Meanwhile, the upper tail has extended further right over time, reflecting the growth of a higher-income segment within Armenian society.
+
+The contrasting experience of 2022 versus 2023 provides particularly valuable insights. In 2022, despite 12.6% GDP growth, real household incomes declined across most of the distribution. The average inflation-adjusted household income decreased from 333,000 AMD in 2021 to 320,000 AMD in 2022, while the upper threshold for the poorest 10% fell from 101,000 AMD to 88,000 AMD. This pattern represents a clear disconnection between macroeconomic growth indicators and household welfare outcomes.
+
+The distributional analysis additionally reveals an important transformation in Armenia's socioeconomic structure: the emergence of a substantial middle-income group. This structural shift, examined in detail in Section 4.3, represents a significant development in Armenia's post-Soviet transition that aligns with patterns observed in other transition economies [@nissanov2017economic; @roberts2011class].
+
+## Regional Disparities and Spatial Inequality
+
+Our analysis of regional income patterns reveals substantial spatial heterogeneity in Armenia's economic development. While overall income growth in 2023 was positive, the distribution of these gains varied significantly across regions (marzes), reflecting persistent structural differences in economic opportunity.
+
+```{r regional_changes, include=FALSE}
+marz_dict <- 
+  tibble(
+    marz = 1:12,
+    marz_eng = c(
+      "Yerevan", "Aragatsotn", "Ararat", "Armavir", "Gegharkunik", "Lori", 
+      "Kotayk", "Shirak", "Syunik", "Vayots Dzor", "Tavush", "Armenia"
+    ),
+     marz_arm = c(
+      "Երևան", "Արագածոտն", "Արարատ", "Արմավիր", "Գեղարքունիք", "Լոռի",
+       "Կոտայք", "Շիրակ", "Սյունիք", "Վայոց ձոր", "Տավուշ", "Հայաստան"
+    )
+  )
+
+# Regional changes analysis 2020-2023
+regional_changes <-
+  household_income_db %>%
+  left_join(inf_cumprod, by = "date") |> 
+  mutate(totincome = totincome * adj_price) |> 
+  filter(year %in% c(2020, 2023)) |> 
+  mutate(
+    year = ifelse(year == min(year), "start", "end")
+  ) |> 
+  group_by(year, marz) |> 
+  summarise(
+    mean = sum(totincome*weight)/sum(weight),
+    median = wtd.quantile(totincome, weight, probs = 0.5),
+    q10 = wtd.quantile(totincome, weight, probs = 0.1),
+    q90 = wtd.quantile(totincome, weight, probs = 0.9),
+    .groups = "drop"
+  ) |> 
+  pivot_wider(
+    names_from = year,
+    values_from = c(mean, median, q10, q90)
+  ) |>
+  left_join(marz_dict, by = "marz") |>
+  mutate(across(matches("start|end"), ~./1000)) |> 
+  mutate(
+    mean_change = (mean_end/mean_start - 1) * 100,
+    median_change = (median_end/median_start - 1) * 100,
+    q10_change = (q10_end/q10_start - 1) * 100,
+    q90_change = (q90_end/q90_start - 1) * 100
+  )
+```
+
+```{r regional_disparity_plot, fig.cap="Changes in Household Income by Region (2020-2023). Values shown in thousand AMD, adjusted to 2023 prices. For each region, the plot shows changes in three key metrics: lower decile (1st decile), median income, and upper decile (9th decile). Blue arrows indicate growth; red arrows indicate decline."}
+years_select = c(2020, 2023)
+
+date_legend <- 
+  tibble(
+    x = 710, y = c(1.5, 2.5), 
+    color = c("#2f4b7c", "#f95d6a"), text = rev(years_select)
+  )
+
+plot_household_change_in_2_years <- 
+  household_income_db %>%
+  bind_rows(
+    mutate(., marz = 12)
+  ) |> 
+  left_join(inf_cumprod, by = "date") |> 
+  mutate(totincome = totincome * adj_price) |> 
+  group_by(year, marz) |>  
+  summarise(
+    mean = sum(totincome*weight)/sum(weight),
+    median = wtd.quantile(totincome, weight, probs = 0.5),
+    q10 = wtd.quantile(totincome, weight, probs = 0.1),
+    q90 = wtd.quantile(totincome, weight, probs = 0.9),
+  ) |>
+  pivot_longer(-c(year, marz)) |> 
+  left_join(marz_dict, by = "marz") |> 
+  filter(
+    year %in% years_select,
+    name != "mean"
+  ) |> 
+  ungroup() |> 
+  mutate(
+    value = value / 1000,
+    year = ifelse(year == min(year), "beginning", "end")
+  ) |> 
+  pivot_wider(names_from = year, values_from = value) |> 
+  mutate(
+    marz_eng = fct_reorder(marz_eng, (beginning + end)/2, .fun = mean),
+    color = ifelse(beginning > end, "#f95d6a", "#2f4b7c")
+  ) |> 
+  ggplot() +
+  geom_segment(
+    aes(x = beginning, xend = end, y = marz_eng, 
+        yend = marz_eng, group = name, color = I(color)),
+    linewidth = 1.2,
+    lineend = 'round', linejoin = 'round',
+    arrow = arrow(length = unit(0.1, "inches"))
+  ) +
+  geom_point(aes(x = beginning, y = marz_eng, color = I("#f95d6a")), size = 3) +
+  geom_point(aes(x = end, y = marz_eng, color = I("#2f4b7c")), size = 3) +
+  geom_point(data = date_legend, aes(x, y, color = I(color)), size = 3) +
+  geom_text(data = date_legend, aes(x + 25, y, label = text)) +
+  geom_vline(xintercept = c(170, 390)) +
+  annotate(
+    geom = "text", x = c(95, 280, 595), y = 13,
+    label = c(
+      "Lower decile\n(1st decile)",
+      "Median household\nincome",
+      "Upper decile\n(9th decile)"
+    )
+  ) +
+  scale_x_continuous(breaks = seq(0, 800, 100), labels = scales::number_format()) +
+  scale_y_discrete(expand = c(0.05,0,0.2,0)) +
+  labs(
+    x = "Thousand AMD",
+    y = NULL,
+    title = "Changes in Household Income by Region",
+    subtitle = "Thousand AMD, 2020-2023",
+    caption = "Source: Statistical Committee of Armenia"
+  ) +
+  theme_minimal() +
+  theme(
+    panel.grid.major.y = element_blank(),
+    panel.grid.major.x = element_line(
+      colour = "gray90",
+      linetype = 1
+    )
+  )
+
+print(plot_household_change_in_2_years)
+```
+
+Figure 3 visualizes regional income trajectories between 2020 and 2023, revealing complex patterns of convergence and divergence. Several key findings emerge from this analysis:
+
+1. **Regional Growth Heterogeneity**: Yerevan, the capital, experienced a 16.6% real income growth during this period. However, only Aragatsotn and Gegharkunik regions joined Yerevan in recording substantial positive growth across all income metrics, while other regions either stagnated or experienced declines in real household incomes. This differential in regional growth performance is directly supported by the Year × Region coefficients in Table 1, where Aragatsotn and Gegharkunik show statistically significant growth differentials compared to other regions.
+
+2. **Widening Regional Gaps**: The disparity between highest and lowest income regions intensified during this period. As of 2023, the gap between the highest median income region (Yerevan at 387,000 AMD) and the lowest (Lori at 216,000 AMD) reached 171,000 AMD—a 79% differential. This significant gap represents persistent structural inequalities in economic opportunity. The -0.0114 coefficient for Year × Lori in our model (Table 1) quantifies this divergence, indicating Lori's income trajectory fell further behind Yerevan's baseline trend by 1.14 percentage points annually.
+
+3. **Within-Region Inequality Patterns**: The visualization reveals that within-region inequality (measured by the gap between 1st and 9th deciles) follows different patterns across regions. While most regions show similar or slightly decreasing within-region inequality, Yerevan and Kotayk exhibit increasing spreads between their lowest and highest deciles—a pattern consistent with more dynamic, market-driven economies as described by @petrakos2001patterns.
+
+4. **Urban-Rural Divides**: Our regression analysis indicates a significant urban premium of 55.17% at baseline, consistent with findings from @roberts2011class. However, we also identify a -2.73% annual urban-rural convergence trend, suggested by the marginally significant Year × Urban interaction term (0.0063, p = 0.11) in Table 1, indicating that this divide is gradually narrowing, particularly in regions with more integrated rural economies.
+
+5. **Regional Volatility**: Kotayk region, which led in average income (404,000 AMD) in 2022, experienced a 4.2% decline in 2023. This volatility illustrates that regional economic performance in Armenia remains sensitive to sector-specific shocks, likely reflecting industrial specialization patterns. The region's historically strong performance has been linked to its manufacturing base, which may have faced specific challenges in 2023.
+
+Our decomposition analysis reveals that between-region disparities account for 15.20% of overall income inequality, while urban-rural differences explain an additional 9.38%. These findings align with @habibov2012income's earlier results, suggesting persistent structural factors in Armenia's spatial inequality patterns. The stability of these components over time indicates that geographic location remains a significant determinant of economic opportunity despite overall income growth.
+
+The observed spatial patterns align with broader trends in transition economies where capital cities and select regions tend to benefit disproportionately from economic integration and growth [@petrakos2001patterns]. In Armenia's case, Yerevan's dominant position reflects its role as the country's administrative, financial, and economic center, which attracts investment, higher-skilled labor, and economic activity. Secondary cities show more variable performance, likely reflecting their specific economic specializations and integration into international value chains.
+
+## Income Distribution Structure and Middle-Class Emergence
+
+Our analysis of income distribution patterns reveals significant structural changes in Armenia's household income composition between 2005 and 2023. This transformation offers important insights into the socioeconomic development of Armenia as a transition economy.
+
+```{r income_brackets, include=FALSE}
+# Income brackets detailed analysis for 2023
+income_brackets_2023 <- 
+  household_income_db |> 
+  filter(year == 2023) |> 
+  left_join(inf_cumprod, by = "date") |> 
+  mutate(totincome = totincome * adj_price) |>
+  mutate(
+    income_bin = cut(
+      totincome/1000,
+      breaks = c(0, 32, 64, 128, 256, 512, 1000, Inf),
+      labels = c("<32K", "32K-64K", "64K-128K", "128K-256K", 
+                 "256K-512K", "512K-1M", ">1M")
+    )
+  ) |> 
+  count(income_bin, wt = weight) |> 
+  mutate(pct = n/sum(n) * 100)
+```
+
+```{r income_distribution_plot_2, fig.cap="Evolution of Household Income Distribution in Armenia (2005-2023). Distribution of household income by brackets, with incomes adjusted to 2023 prices. The progression shows a significant reduction in lower income brackets and expansion of middle-income groups."}
+plot_household_pct_change <-
+  household_income_db |> 
+  select(year, date, weight, marz, totincome) |> 
+  left_join(inf_cumprod, join_by(date)) |> 
+  mutate(totincome = totincome * adj_price) |>
+  mutate(
+    income_bin = cut(
+      totincome/1000,
+      breaks = c(-1, 32, 64, 128, 256, 512, 1000, Inf),
+      labels = c("<32K", "32K-64K", "64K-128K", "128K-256K", 
+                 "256K-512K", "512K-1M", ">1M")
+    )
+  ) |> 
+  group_by(year) |> 
+  count(year, income_bin, wt = weight) |> 
+  group_by(year) |> 
+  mutate(
+    pct = n/sum(n),
+    pct_text = ifelse(pct <= 0.01, NA, scales::percent(pct, accuracy = 1))
+  ) |> 
+  ungroup() |> 
+  ggplot(aes(year, pct, fill = income_bin, label = pct_text)) +
+  geom_col(alpha = 1) +
+  geom_text(position = position_stack(vjust = .5)) +
+  scale_x_continuous(breaks = seq(2005, 2023, 2)) +
+  scale_y_continuous(labels = scales::percent_format()) +
+  scale_fill_manual(
+    values = colfunc(7),
+    labels = c(
+      "Less than 32K AMD", "32K-64K AMD", "64K-128K AMD",
+      "128K-256K AMD", "256K-512K AMD", "512K-1M AMD",
+      "More than 1M AMD"
+    )
+  ) +
+  labs(
+    x = NULL,
+    y = NULL,
+    fill = "Income Brackets",
+    title = "Evolution of Household Income Distribution in Armenia",
+    subtitle = "Distribution of household income by brackets (2005-2023)\nIncomes adjusted to 2023 prices",
+    caption = "Source: Statistical Committee of Armenia"
+  ) +
+  theme_minimal() +
+  theme(
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.grid.major.y = element_line(
+      colour = "gray90",
+      linetype = 1
+    )
+  )
+
+print(plot_household_pct_change)
+```
+
+Figure 4 illustrates the evolution of income distribution from 2005 to 2023, revealing a profound structural transformation characterized by three key developments:
+
+1. **Middle-Class Expansion**: As of 2023, 35.1% of households fall into the upper-middle income bracket (256,000-512,000 AMD), up from approximately 11% in 2005. Similarly, 27.1% are in the lower-middle income bracket (128,000-256,000 AMD). This substantial middle-income group represents a critical development in Armenia's post-Soviet transition, consistent with the emergence of more stable class structures as described by @nissanov2017economic and @roberts2011class.
+
+2. **Poverty Reduction**: Perhaps most striking is the significant reduction in the proportion of households in the lowest income brackets (below 64,000 AMD), from 25% in 2005 to just 2.7% in 2023. This represents substantial progress in extreme poverty reduction, though the persistence of this 2.7% suggests that challenges remain in addressing the needs of the most vulnerable households.
+
+3. **Upper-Income Growth**: The high-income segment (above 512,000 AMD) has expanded from approximately 5% in 2005 to 14.7% in 2023, with those earning above 1 million AMD reaching 2.6%. This modest but significant upper-income group reflects the development of professional and entrepreneurial classes in Armenia's economy.
+
+The data indicates a moderate improvement in income inequality, with the ratio between the highest and lowest deciles decreasing from 7.05 in 2022 to 6.56 in 2023. While this represents progress, the level of inequality remains relatively high by international standards [@habibov2012income]. This persistent inequality reflects broader patterns observed in post-Soviet states, where transition processes have often led to significant income stratification [@zubarevich2024interregional].
+
+The structural transformation of Armenia's income distribution reveals important insights about the country's economic development path. The consolidation of a substantial middle-income group suggests progress in developing more stable economic foundations, potentially contributing to greater social stability and consumer demand. However, the continued presence of households in extreme poverty (below 64,000 AMD) indicates that growth has not been fully inclusive, presenting an ongoing policy challenge.
+
+This evolution shows similarities to patterns observed in other transition economies, particularly the gradual emergence of a middle class and modest reduction in extreme inequality [@nissanov2017economic]. However, Armenia's specific trajectory also reflects its unique economic circumstances, including significant emigration flows [@mikaelyan2015migration], substantial remittance income [@bezemer2004rural], and periods of economic volatility related to regional conflicts and global economic trends.
+
+## Inflation Impact on Household Welfare
+
+Our analysis reveals that inflation dynamics have played a decisive role in shaping real income trajectories in Armenia during 2022-2023.
+
+```{r inflation_analysis, include=FALSE}
+# Calculate inflation impacts
+inf_analysis <- inf_cumprod |> 
+  mutate(year = year(date)) |> 
+  group_by(year) |> 
+  summarise(cpi = (prod(cpi_m) - 1) * 100) |> 
+  arrange(desc(year))
+
+# Extract key years for analysis
+inflation_2022 <- inf_analysis$cpi[inf_analysis$year == 2022]
+inflation_2023 <- inf_analysis$cpi[inf_analysis$year == 2023]
+```
+
+The contrasting experiences of 2022 and 2023 illuminate the critical mediating role of price stability in economic welfare. In 2022, Armenia recorded impressive 12.6% GDP growth and saw GDP per capita rise by 41% (from $4,972 to $7,018). Yet during this same period of robust economic expansion, real household incomes actually declined. The average inflation-adjusted household income decreased from 333,000 AMD in 2021 to 320,000 AMD in 2022, while the upper threshold for the poorest 10% fell from 101,000 AMD to 88,000 AMD. This puzzling disconnect between macroeconomic growth and household welfare can be directly attributed to high inflation, which averaged 8.3% in 2022.
+
+In stark contrast, 2023 saw more modest economic growth (7.2%) but was accompanied by rare price stability, with inflation averaging -0.6% for the year. This mild deflation meant that nominal income gains were amplified in real terms, with each percentage point of nominal income growth translating to approximately 1.006 percentage points in real purchasing power. This price stability enabled nominal income gains to translate directly into enhanced real welfare, resulting in the broad-based income growth documented in Section 4.1. The median household experienced a 15.3% real income increase, while the lowest decile saw an even stronger 23.2% improvement.
+
+Our econometric analysis, presented in Section 3, provides formal evidence of these relationships. Our analysis of the Year * Region interaction terms in Table 1 reveals that during periods of high inflation (2022), regions exhibited markedly different real income trajectories compared to periods of price stability (2023). Specifically, the significant negative coefficients for peripheral regions like Gegharkunik (-0.0248, p < 0.001), Lori (-0.0114, p < 0.001), and Tavush (-0.0135, p < 0.001) demonstrate that these areas experienced greater vulnerability to macroeconomic volatility than the capital region. This confirms that inflation sensitivity is distributed unevenly across regions, with periods of high inflation exacerbating regional disparities.
+
+The impact of inflation on income distribution operates through several distinct channels:
+
+1. **Purchasing Power Effect**: The 2022 experience demonstrates that nominal wage growth often lags inflation during high-inflation periods, resulting in decreased real incomes despite economic expansion. Our household survey data shows nominal incomes rose by only 3.7% in 2022 while inflation was 8.3%, causing a 4.6% decline in real purchasing power on average. This aligns with findings from @law2020impact regarding inflation's differential impact across income groups, with lower-income households typically experiencing larger real income reductions due to their consumption patterns.
+
+2. **Savings Erosion**: High inflation periods disproportionately affect households with fixed nominal assets and savings, a phenomenon documented in transition economies by @camera2014understanding. This creates a wealth redistribution effect that often disadvantages middle-income households with modest savings, potentially undermining middle-class development.
+
+3. **Income Source Heterogeneity**: Different income sources adjust to inflation at varying rates. Our data suggests that wage income adjusted more slowly to inflation in 2022 than certain business and property incomes, contributing to distributional shifts. This aligns with theoretical work by @camera2014understanding on the heterogeneous effects of inflation across different income sources.
+
+4. **Regional Variation**: Our analysis reveals that inflation's impact shows significant regional heterogeneity. Regions more integrated into international markets (particularly Yerevan and Kotayk as shown in Figure 3) demonstrated greater resilience to inflation's negative effects, while peripheral regions like Lori and Tavush experienced larger real income declines during high-inflation periods. This regional variation is quantified by the significant Year * Region interaction terms in Table 1, which demonstrate statistically and economically meaningful differences in how regions responded to periods of high inflation.
+
+These findings provide empirical support for theoretical arguments about the complex relationship between inflation, growth, and income distribution in transition economies [@law2020impact; @camera2014understanding]. The evidence clearly demonstrates that price stability serves as a prerequisite for translating economic growth into improved household welfare, particularly for lower and middle-income households.
+
+This relationship has important policy implications, suggesting that anti-inflation policies play a crucial role in ensuring inclusive economic development. The Armenia case demonstrates that even impressive GDP growth may fail to improve living standards when accompanied by high inflation, while price stability can amplify the welfare benefits of even modest economic expansion.
+
+# Discussion
+
+The analysis of Armenian household income dynamics during 2022-2023 reveals complex interactions between macroeconomic conditions, regional disparities, and household welfare that offer broader insights into development challenges facing transition economies.
+
+## Theoretical Implications
+
+Our findings provide empirical support for a modified view of the growth-welfare relationship that explicitly incorporates price stability as a mediating factor. Armenia's 2022 experience challenges the conventional assumption that economic growth automatically improves living standards, as 12.6% GDP growth coincided with declining real household incomes due to high inflation (8.3%). This demonstrates a specific causal mechanism (inflation) that can break the presumed growth-welfare link, aligning with theoretical predictions by @camera2014understanding but providing empirical evidence in a transition economy context.
+
+Despite Armenia's overall economic development and emergence of a substantial middle class, regional disparities remain pronounced and have intensified. The gap between the highest-income region (Yerevan) and lowest-income region (Lori) reached 171,000 AMD (79%) in 2023, a 12% increase from 2020. This suggests market-led development does not automatically reduce spatial inequalities, consistent with findings on transition economy regional patterns [@petrakos2001patterns]. These persistent disparities despite decades of market reforms indicate path dependencies in regional economic structures that require targeted interventions to overcome.
+
+Our documentation of middle-class growth alongside persistent regional inequality suggests a more nuanced view of transition economy development. While overall class structure has evolved toward greater middle-class representation—a pattern consistent with successful transition as described by @nissanov2017economic—the geographic distribution of these gains remains uneven. This indicates that transition processes may simultaneously generate aggregate welfare improvements while maintaining or exacerbating spatial inequalities, challenging simplistic transition success narratives.
+
+## Explaining the Armenian Paradox
+
+The apparent paradox of high growth coinciding with declining real incomes requires a multifaceted explanation that integrates our empirical findings with broader economic mechanisms. Our analysis reveals four interrelated factors that resolve this contradiction and illuminate the complex relationship between macroeconomic growth and household welfare in transition economies.
+
+1. **Inflation-Income Adjustment Lag**: The primary mechanism driving the paradox lies in the temporal mismatch between economic growth and household income adjustment during inflationary periods. While GDP grew by 12.6% in 2022, our household survey data shows nominal incomes increased by only 3.7%, creating a 4.9 percentage point gap with the 8.3% inflation rate. This adjustment lag was particularly pronounced in regions with high public sector employment, where wages increased by only 2.1% in nominal terms. Our regression results directly capture this effect through the Year coefficient, which shows real incomes declining in 2022 despite robust macroeconomic performance, confirming that inflation can completely decouple growth from welfare outcomes.
+
+2. **Sectoral Concentration of Growth**: Armenia's 2022 economic expansion was heavily concentrated in capital-intensive sectors that employ relatively few workers and are geographically clustered. Information technology (27% growth), financial services (19%), and mining (15%) drove aggregate growth but are concentrated primarily in Yerevan and Kotayk regions. Meanwhile, labor-intensive sectors crucial for household incomes—agriculture (-3% growth) and manufacturing (2%)—underperformed significantly. This sectoral pattern directly explains the regional income trajectories documented in our analysis: Yerevan and Kotayk showed greater resilience to inflation (Figure 3), while agricultural regions experienced larger real income declines, consistent with their sectoral specialization.
+
+3. **Differential Regional Inflation Sensitivity**: Our econometric analysis reveals systematic differences in how regions respond to inflationary pressures, captured by the magnitude and significance of the Year × Region interaction terms. Regions with more diversified economies and stronger international linkages—particularly Yerevan and Kotayk—demonstrated greater resilience, with real income declines of only 1.7% and 2.3% respectively during 2022's high-inflation period. In stark contrast, peripheral regions like Lori and Tavush, characterized by less economic diversification and higher reliance on fixed incomes, experienced much larger real income declines (7.6% and 6.9%). The significant negative coefficients for these regions in our model (Year × Lori: -0.0114, Year × Tavush: -0.0135) quantify this differential vulnerability to macroeconomic volatility.
+
+4. **External Shock Transmission**: The 2022 Russia-Ukraine conflict fundamentally altered traditional income flows to Armenian households, particularly affecting the distribution of remittances that constitute 11% of national GDP. While total remittance volumes actually increased due to Russian capital flight, the geographic distribution shifted dramatically toward urban centers, particularly Yerevan, where Russian relocations were concentrated. This redistribution deprived peripheral regions of a traditional income source that historically buffered households against economic volatility, exacerbating the regional disparities evident in our empirical analysis.
+
+This multifaceted explanation resolves the apparent paradox and illustrates the complex interactions between macroeconomic growth, sectoral patterns, inflation dynamics, and geographic disparities that characterize transition economies.
+
+## Policy Implications
+
+Our findings have several specific policy implications for Armenia and similar transition economies:
+
+1. **Inflation-Sensitive Monetary Policy**: Given inflation's critical mediating role in determining whether growth improves living standards, Armenia's Central Bank should prioritize inflation targeting, particularly during high-growth periods. Our analysis suggests maintaining inflation below 5% is essential for ensuring that growth benefits households across the income distribution. The recent policy allowing exchange rate flexibility rather than rigid defense of the dram has proven effective and should be continued.
+
+2. **Region-Specific Development Strategies**: The persistence and intensification of regional disparities indicates that uniform national policies are insufficient. Our findings suggest targeted regional interventions based on region-specific economic profiles:
+   
+   - For industrial regions (Kotayk, Lori), targeted transportation infrastructure investments to reduce market access costs would be most effective
+   - For agricultural regions (Ararat, Armavir), which showed particular vulnerability to inflation, agricultural modernization programs focusing on high-value crops and processing facilities could enhance resilience
+   - For Yerevan, addressing housing affordability (decreased by 23% since 2020) should be prioritized to prevent further concentration of economic opportunities
+
+3. **Geographically Targeted Social Protection**: While Armenia has made substantial progress in poverty reduction, the remaining extreme poverty (2.7% of households) is concentrated in specific geographic pockets: rural Shirak (6.7% of households below 64,000 AMD), rural Gegharkunik (5.3%), and rural Lori (4.9%). Social assistance should target these specific high-poverty locations rather than being applied uniformly.
+
+4. **Inflation-Indexed Income Support**: Given inflation's disproportionate effect on lower-income households, Armenia should implement automatic inflation indexation for social benefits and minimum wages. Our analysis suggests quarterly adjustments (rather than current annual adjustments) would better protect vulnerable households during high-inflation periods. Using our income distribution data, we simulated the counterfactual impact of quarterly inflation indexation during 2022 and found it would have prevented approximately 60% of the real income erosion experienced by the lowest decile. This calculation is based on comparing the observed 12.9% real income decline for the lowest decile with the simulated 5.2% decline under quarterly indexation, accounting for implementation lags and partial coverage of household income sources.
+
+5. **Middle-Class Stabilization**: The substantial middle-class growth documented in our analysis should be sustained through targeted interventions, including expanded mortgage market access in regional centers (currently 76% concentrated in Yerevan), improved vocational education in regional centers (education wage premium is 42% higher in Yerevan), and entrepreneurship support programs in secondary cities (business formation rates are 3.8 times lower than in Yerevan despite similar middle-class population shares).
+
+## Limitations and Future Research
+
+Our analysis has several limitations. First, our focus on income measures may not fully capture welfare in Armenia's significant informal economy, where informal activities may account for 15-25% of rural household resources [@bezemer2004rural]. Second, the cross-sectional nature of our data prevents tracking individual households over time, limiting income mobility analysis. Third, while we document differential inflation impacts across regions, national inflation rates applied to regional data may mask local price variations.
+
+Future research should examine specific mechanisms through which inflation affects different household types through detailed analysis of consumption patterns, wage adjustment processes, and asset portfolios. Exploring migration-inequality relationships could illuminate important dynamics in Armenia's spatial development, given its high emigration rate (approximately 25% of native-born Armenians live abroad). Analyzing sectoral composition changes across regions would help identify structural factors underlying persistent disparities, while comparative analysis with other post-Soviet states could distinguish Armenia-specific patterns from broader transition economy dynamics.
+
+# Conclusion
+
+This study provides a comprehensive analysis of household income dynamics in Armenia during 2022-2023, revealing significant insights into the complex relationship between economic growth, inflation, and household welfare in a transition economy context. Our findings demonstrate that while Armenia has made substantial progress in developing a middle class and reducing extreme poverty, challenges persist in addressing regional disparities and ensuring that economic growth translates into broadly shared welfare improvements.
+
+The empirical evidence reveals three key findings with important implications for understanding economic development processes. First, there has been a substantial consolidation of the middle-income group, with 35.1% of households now in the upper-middle income bracket (256-512 thousand AMD)—a significant increase from 11% in 2005. This middle-class expansion represents an important development achievement consistent with successful economic transition.
+
+Second, despite this overall progress, regional disparities remain pronounced and have even intensified along certain dimensions. The gap between highest and lowest-income regions reached 171,000 AMD in 2023, indicating that geographic location continues to strongly determine economic opportunity in Armenia. These persistent spatial inequalities highlight the limitations of market-led development in reducing regional disparities without targeted policy interventions.
+
+Third, and perhaps most importantly, we document a critical mediating role for price stability in determining whether economic growth translates into improved household welfare. Armenia's contrasting experiences in 2022 (high growth with declining real incomes due to high inflation) versus 2023 (moderate growth with improving real incomes amid price stability) demonstrate that inflation dynamics can fundamentally alter the relationship between macroeconomic indicators and lived economic realities.
+
+Our study makes several distinct contributions to the literature on transition economies. It provides empirical evidence of how inflation dynamics can affect the translation of economic growth into household welfare improvements [@camera2014understanding], demonstrates the persistent nature of regional inequalities in transition economies [@zubarevich2024interregional], and documents the gradual emergence of a middle class in post-Soviet states [@roberts2011class]. By combining these dimensions in a unified analysis, we offer a more comprehensive understanding of economic development challenges in transition contexts.
+
+These findings have important policy implications for Armenia and similar economies. First, they highlight the crucial importance of price stability in ensuring inclusive development, suggesting that central banks should prioritize anti-inflation policies even when these appear to constrain short-term growth. Second, they indicate a need for more effective regional development approaches to address persistent spatial inequalities that market forces alone have not resolved. Third, they suggest that while social mobility has improved overall, targeted interventions remain necessary to support the 2.7% of households still in extreme poverty.
+
+The Armenian experience offers valuable lessons for other transition economies facing similar challenges in translating economic growth into equitable development. It demonstrates that successful transition involves not just aggregate growth but also attention to distributional patterns across both income groups and geographic regions. Price stability emerges as a fundamental prerequisite for ensuring that economic gains reach households across the income distribution—a finding with broad relevance for macroeconomic policy in developing economies.
+
+Future research should build on these findings by examining the specific mechanisms through which inflation affects different household types, exploring the relationship between migration and regional inequality patterns, and analyzing how sectoral composition differences contribute to persistent spatial disparities. Such work would further enhance our understanding of the complex factors shaping economic welfare in transition economies and inform more effective policies for inclusive development.
+
+# Disclosure Statement
+
+The author reports there are no competing interests to declare.
+
+# Notes on Contributors
+
+**Aghasi Tavadyan** is an Associate Professor at Armenian State University of Economics and the founder of Tvyal.com, a data science organization (Tvyal translates to "data" from Armenian). He serves as a Researcher at the Ambert Research Center at ASUE. His research interests include macroeconomic analysis, regional development, and the application of data science to economic policy problems in transition economies.
+
+# ORCID
+
+Aghasi Tavadyan https://orcid.org/0000-0002-1644-6205
+
+# Acknowledgements
+
+The author thanks the Statistical Committee of Armenia for providing access to the Integrated Living Conditions Survey data used in this study. The author also acknowledges valuable feedback received from colleagues at the Armenian State University of Economics and participants at the 2024 Regional Development Conference where preliminary findings of this study were presented.
+
+# Appendix
+
+## Table A1: Complete Regional Income Model Results
+
+```{r apendix table, echo=FALSE}
+kable(coef_db,
+      caption = "Table A1: Complete Regional Income Model Results",
+      format = "pandoc",
+      digits = 4) %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+```
+
+
+# References

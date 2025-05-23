@@ -15,7 +15,7 @@ iso_to_unicode_flag <- function(iso2c) {
   })
 }
 
-year_select = 2023
+year_select = 2021
 
 transfers_cleant_reemap_data <-
   russia_gold |>
@@ -78,5 +78,5 @@ transfers_cleant_reemap_data |>
     caption = "Aghasi Tavdyan | Data Source: UN Comtrade."
   )
 
-ggsave(paste0("plots/russia_oil_exports_", year_select,".png"), ggplot2::last_plot(), height = 7, width = 10)
-ggsave(paste0("plots/russia_oil_exports_", year_select,".svg"), ggplot2::last_plot(), height = 7, width = 10)
+ggsave(paste0("plots/russia_oil_exports_", year_select,".png"), ggplot2::last_plot(), height = 6, width = 8)
+ggsave(paste0("plots/russia_oil_exports_", year_select,".svg"), ggplot2::last_plot(), height = 6, width = 8)

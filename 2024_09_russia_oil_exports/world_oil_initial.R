@@ -186,8 +186,8 @@ russia_oil |>
     caption = "Aghasi Tavdyan | Data Source: UN Comtrade | Estimates for 2022 and beyond are provided by the author."
   )
 
-ggsave("plots/russia_oil_exports_1.png", ggplot2::last_plot(), height = 7, width = 10)
-ggsave("plots/russia_oil_exports_1.svg", ggplot2::last_plot(), height = 7, width = 10)
+ggsave("plots/russia_oil_exports_1.png", ggplot2::last_plot(), height = 6, width = 8)
+ggsave("plots/russia_oil_exports_1.svg", ggplot2::last_plot(), height = 6, width = 8)
 
 
 year_position_f <- function(year, start_year = 2019) {
@@ -245,8 +245,8 @@ russia_oil |>
   )
 
 
-ggsave("plots/russia_oil_exports_2.png", ggplot2::last_plot(), height = 7, width = 10)
-ggsave("plots/russia_oil_exports_2.svg", ggplot2::last_plot(), height = 7, width = 10)
+ggsave("plots/russia_oil_exports_2.png", ggplot2::last_plot(), height = 6, width = 8)
+ggsave("plots/russia_oil_exports_2.svg", ggplot2::last_plot(), height = 6, width = 8)
 
 
 ###################################################
@@ -377,8 +377,8 @@ india_oil |> filter(trade_code == "M") |>
     caption = "Aghasi Tavdyan | Data Source: UN Comtrade."
   )
 
-ggsave("plots/india_oil_imports_1.png", ggplot2::last_plot(), height = 7, width = 10)
-ggsave("plots/india_oil_imports_1.svg", ggplot2::last_plot(), height = 7, width = 10)
+ggsave("plots/india_oil_imports_1.png", ggplot2::last_plot(), height = 6, width = 8)
+ggsave("plots/india_oil_imports_1.svg", ggplot2::last_plot(), height = 6, width = 8)
 
 
 
@@ -436,8 +436,8 @@ india_oil |>
 
 
 
-ggsave("plots/india_oil_imports_2.png", ggplot2::last_plot(), height = 7, width = 10)
-ggsave("plots/india_oil_imports_2.svg", ggplot2::last_plot(), height = 7, width = 10)
+ggsave("plots/india_oil_imports_2.png", ggplot2::last_plot(), height = 6, width = 8)
+ggsave("plots/india_oil_imports_2.svg", ggplot2::last_plot(), height = 6, width = 8)
 
 
 
