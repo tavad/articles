@@ -1,13 +1,16 @@
 ---
 title: "Growing but Not Prospering: Armenia's Paradox of Economic Growth and Household Welfare"
-author: "Aghasi Tavadyan"
+author: |
+  Aghasi Tavadyan\
+  Associate Professor, Armenian State University of Economics\
+  ORCID: https://orcid.org/0000-0002-1644-6205
 date: "`r Sys.Date()`"
-output:
-  word_document:
-    toc: true
-    fig_caption: true
-    df_print: kable
-    reference_docx: "templates/LaTex_7.dotx"
+# output:
+#   word_document:
+#     toc: true
+#     fig_caption: true
+#     df_print: kable
+#     reference_docx: "templates/LaTex_7.dotx"
 
 #     
 #     
@@ -19,12 +22,12 @@ output:
 # #     highlight: tango # For code block syntax highlighting
 # #     df_print: kable # For nicer table printing, works well with 
   
-# output:
-#   pdf_document:
-#     toc: true
-#     fig_caption: true
-#     df_print: kable
-#     latex_engine: xelatex
+output:
+  pdf_document:
+    toc: true
+    fig_caption: true
+    df_print: kable
+    latex_engine: xelatex
 bibliography: bib.bibtex
 header-includes:
  - \usepackage{fontspec}
@@ -111,7 +114,7 @@ Our findings demonstrate how price stability serves as a critical mediating fact
 
 The relationship between economic growth and household welfare has long been a fundamental concern in development economics. Transition economies present a particularly complex case study, where rapid structural transformations can create significant disconnects between macroeconomic indicators and lived economic realities. Armenia offers an especially compelling example of this phenomenon, having experienced substantial economic volatility during the 2022-2023 period that provides a unique quasi-experimental setting for examining how growth translates—or fails to translate—into improved living standards.
 
-Recent economic developments in Armenia present an apparent paradox. In 2022, the country recorded impressive 12.6% GDP growth and saw its GDP per capita rise from \$4,972 to \$7,018 (a 41% increase). Yet household survey data indicates that real incomes actually declined during this period of robust growth. Conversely, 2023 saw more modest economic expansion but was accompanied by significant improvements in household welfare across all income deciles. This contradictory pattern raises important questions about the mechanisms that determine whether macroeconomic growth benefits households and how these benefits are distributed across regions.
+Recent economic developments in Armenia present an apparent paradox. In 2022, the country recorded impressive 12.6% GDP growth and saw its GDP per capita rise from \$4,972 to \$7,018 (a 41% increase). Yet household survey data indicates that real incomes actually declined during this period of robust growth. Conversely, 2023 saw more modest economic expansion but was accompanied by significant improvements in household welfare across all income deciles. This period of sharp, contrasting macroeconomic conditions raises important questions about the mechanisms that determine whether macroeconomic growth benefits households and how these benefits are distributed across regions.
 
 The literature on transition economies has separately examined factors such as regional disparities [@zubarevich2024interregional], inflation dynamics [@law2020impact], and income distribution [@habibov2012income], but few studies have analyzed how these elements interact in a unified framework. This gap is particularly notable in the Armenian context, where the post-Soviet transition has been complicated by geopolitical tensions, migration pressures, and economic volatility [@sandoyan2022main]. By examining the apparent disconnect between growth and welfare in Armenia during 2022-2023, this study contributes to both the theoretical understanding of economic development processes and practical policymaking in transition economies.
 
@@ -800,7 +803,7 @@ Aghasi Tavadyan https://orcid.org/0000-0002-1644-6205
 
 # Acknowledgements
 
-The author thanks the Statistical Committee of Armenia for providing access to the Integrated Living Conditions Survey data used in this study. The author also acknowledges valuable feedback received from colleagues at the Armenian State University of Economics and participants at the 2024 Regional Development Conference where preliminary findings of this study were presented.
+The author thanks the Statistical Committee of Armenia for providing access to the Integrated Living Conditions Survey data used in this study. The author also acknowledges valuable feedback received from colleagues at the Armenian State University of Economics and participants at the 2024 Regional Development Conference where preliminary findings of this study were presented. This research received no specific grant from any funding agency in the public, commercial, or not-for-profit sectors.
 
 # Appendix
 
