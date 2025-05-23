@@ -57,6 +57,7 @@ library(kableExtra)
 library(readxl)
 library(ggridges)
 library(Hmisc)
+library(gt)
 
 source("~/R/newsletter/initial_setup.R")
 
@@ -289,12 +290,32 @@ key_coefficients <- c(
 coef_summary <- coef_db |> 
   filter(coefficient %in% key_coefficients)
 
-
-kable(coef_summary,
-      caption = "Key Regional Income Model Coefficients (Full results in Appendix Table A1)",
-      format = "pandoc",
-      digits = 4) %>%
-  kable_styling(bootstrap_options = c("striped", "hover"))
+coef_summary |>
+  gt() |>
+  tab_header(
+    title = "Key Regional Income Model Coefficients",
+    subtitle = "Full results in Appendix Table A1"
+  ) |>
+  fmt_number(
+    columns = c(Estimate, `Std. Error`, `t-statistic`),
+    decimals = 4
+  ) |>
+  fmt_scientific(
+    columns = `p-value`,
+    decimals = 4
+  ) |>
+  cols_label(
+    coefficient = "Coefficient",
+    Estimate = "Estimate", 
+    `Std. Error` = "Std. Error",
+    `t-statistic` = "t-statistic",
+    `p-value` = "p-value"
+  ) |>
+  tab_options(
+    table.font.size = px(12),
+    heading.title.font.size = px(14),
+    column_labels.font.weight = "bold"
+  )
 
 ```
 
@@ -305,10 +326,10 @@ library(broom)
 library(patchwork)
 
 # Create diagnostic plot data
-model_diagnostics <- augment(model_12) %>%
+model_diagnostics <- augment(model_12) |>
   # Add standardized residuals
   mutate(std_resid = .std.resid,
-         sqrt_abs_resid = sqrt(abs(.resid))) %>%
+         sqrt_abs_resid = sqrt(abs(.resid))) |>
   # Filter extreme outliers
   filter(abs(std_resid) < 4)  # Remove points with standardized residuals > 4
 
@@ -344,7 +365,7 @@ p3 <- ggplot(sampled_diagnostics, aes(x = .fitted, y = sqrt_abs_resid)) +
   theme_minimal()
 
 # 4. Cook's distance - only showing influential points
-influential_points <- model_diagnostics %>%
+influential_points <- model_diagnostics |>
   filter(.cooksd > quantile(.cooksd, 0.999, na.rm = TRUE))  # Top 0.1% of points
 
 p4 <- ggplot(influential_points, aes(x = seq_along(.cooksd), y = .cooksd)) +
@@ -461,7 +482,7 @@ marz_dict <-
 
 # Regional changes analysis 2020-2023
 regional_changes <-
-  household_income_db %>%
+  household_income_db |>
   left_join(inf_cumprod, by = "date") |> 
   mutate(totincome = totincome * adj_price) |> 
   filter(year %in% c(2020, 2023)) |> 
@@ -805,16 +826,43 @@ Aghasi Tavadyan https://orcid.org/0000-0002-1644-6205
 
 The author thanks the Statistical Committee of Armenia for providing access to the Integrated Living Conditions Survey data used in this study. The author also acknowledges valuable feedback received from colleagues at the Armenian State University of Economics and participants at the 2024 Regional Development Conference where preliminary findings of this study were presented. This research received no specific grant from any funding agency in the public, commercial, or not-for-profit sectors.
 
+AI Assistance Declaration: Claude (Anthropic) was used for language improvement and editorial assistance to enhance the clarity and flow of the manuscript. All research design, data analysis, coding, interpretation of results, and core intellectual contributions are entirely the author's own work. The analysis builds upon the author's original research published in Armenian at: https://www.tvyal.com/newsletter/2025/2025_01_14
+
 # Appendix
 
 ## Table A1: Complete Regional Income Model Results
 
 ```{r apendix table, echo=FALSE}
-kable(coef_db,
-      caption = "Table A1: Complete Regional Income Model Results",
-      format = "pandoc",
-      digits = 4) %>%
-  kable_styling(bootstrap_options = c("striped", "hover"))
+coef_db |>
+  gt() |>
+  tab_header(
+    title = "Table A1: Complete Regional Income Model Results"
+  ) |>
+  fmt_number(
+    columns = c(Estimate, `Std. Error`, `t-statistic`),
+    decimals = 4
+  ) |>
+  fmt_scientific(
+    columns = `p-value`,
+    decimals = 4
+  ) |>
+  cols_label(
+    coefficient = "Coefficient",
+    Estimate = "Estimate", 
+    `Std. Error` = "Std. Error",
+    `t-statistic` = "t-statistic",
+    `p-value` = "p-value"
+  ) |>
+  tab_options(
+    table.font.size = px(11),
+    heading.title.font.size = px(14),
+    column_labels.font.weight = "bold",
+    table.width = pct(100)
+  ) |>
+  tab_style(
+    style = cell_text(size = px(10)),
+    locations = cells_body()
+  )
 ```
 
 
