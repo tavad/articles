@@ -61,8 +61,8 @@ library(Hmisc)
 source("~/R/newsletter/initial_setup.R")
 
 # Load data
-household_income_db <- read_csv("~/R/newsletter/2025/2025_01_14_household_income/household_income_db.csv")
-inflation_row <- read_excel("~/R/newsletter/2025/2025_01_14_household_income/cpi_armenia_eng.xls", skip = 3)
+household_income_db <- read_csv("data/household_income_db.csv")
+inflation_row <- read_excel("data/cpi_armenia_eng.xls", skip = 3)
 
 # Prepare inflation adjustment
 inf_cumprod <-
