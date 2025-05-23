@@ -167,10 +167,11 @@ This study utilizes anonymized microdata from Armenia's Integrated Living Condit
 
 **Ethics Statement**: This study utilizes anonymized microdata from Armenia's Integrated Living Conditions Survey, provided by the Statistical Committee of Armenia. As the data is publicly available and anonymized, formal ethics committee approval was not required for this secondary analysis.
 
-**Data Availability**: The complete code, processed datasets, and supplementary materials for this study are publicly available at: https://github.com/tavad/articles/tree/main/2025_01_household_income
+**Data Availability**: The complete code, processed datasets, and supplementary materials for this study are publicly available[^3].
 
 [^1]: Data available at: https://www.armstat.am/en/?nid=205
 [^2]: CPI data sourced from: https://www.cba.am/stat/stat_data_eng/6_CPI_eng.xls
+[^3]: Replication materials: https://github.com/tavad/articles/tree/main/2025_01_household_income
 
 Our analysis covers a period of exceptional macroeconomic volatility in Armenia, with 12.6% GDP growth in 2022 followed by 7.2% in 2023, while inflation shifted dramatically from 8.3% to -0.6% between these years. This creates a unique quasi-experimental setting for examining how price stability affects the growth-welfare relationship, as we observe similar magnitudes of economic growth under sharply contrasting inflation regimes within a short timeframe.
 
@@ -351,8 +352,12 @@ p4 <- ggplot(influential_points, aes(x = seq_along(.cooksd), y = .cooksd)) +
        title = "D: Cook's Distance") +
   theme_minimal()
 
-# Combine plots
-(p1 + p2) / (p3 + p4)
+diagnostic_plotes <- (p1 + p2) / (p3 + p4)
+
+ggsave("plots/diagnostic_plotes.png", diagnostic_plotes, width = 10, height = 8)
+
+print(diagnostic_plotes)
+
 ```
 
 Figure 1 presents diagnostic plots for our regional income model. Panel A shows residuals versus fitted values, with the relatively symmetric distribution around the zero line indicating adequate fit. The Normal Q-Q plot in Panel B demonstrates approximate normality of residuals, with slight deviations in the tails as expected with income data. Panel C reveals some heteroscedasticity, justifying our use of robust standard errors. Panel D shows Cook's distance for potentially influential observations, with all values well below 0.5, suggesting no observations exert undue influence on model parameters.
@@ -365,7 +370,7 @@ Our analysis reveals significant positive growth in real incomes across Armenian
 
 The median household's adjusted income increased by 15.3%, rising from 287,000 AMD in 2022 to 331,000 AMD in 2023. This broad-based improvement is evident across the income distribution: the upper threshold for the poorest 10% grew by 23.2% (from 95,000 AMD to 117,000 AMD), while the lower threshold for the wealthiest 10% rose by 14.5% (from 670,000 AMD to 767,000 AMD). This pattern suggests that 2023's gains disproportionately benefited lower-income households, modestly reducing overall inequality.
 
-```{r income_distribution_plot, fig.cap="Evolution of Household Monthly Income Distribution in Armenia (2005-2023). Income values adjusted to 2023 prices. The ridge density plots show the distribution of household incomes across years, with darker shading indicating higher density. Vertical quartile lines show the income distribution's 25th, 50th, and 75th percentiles for each year."}
+```{r income_distribution_plot, fig.width=10, fig.height=7, fig.cap="Evolution of Household Monthly Income Distribution in Armenia (2005-2023). Income values adjusted to 2023 prices. The ridge density plots show the distribution of household incomes across years, with darker shading indicating higher density. Vertical quartile lines show the income distribution's 25th, 50th, and 75th percentiles for each year."}
 # Historical income distribution plot
 plot_household_pct_change_2 <-
   household_income_db |> 
@@ -411,6 +416,8 @@ plot_household_pct_change_2 <-
       linetype = 1
     )
   )
+
+ggsave("plots/plot_household_pct_change_2.png", plot_household_pct_change_2, width = 10, height = 7)
 
 print(plot_household_pct_change_2)
 ```
@@ -480,7 +487,7 @@ regional_changes <-
   )
 ```
 
-```{r regional_disparity_plot, fig.cap="Changes in Household Income by Region (2020-2023). Values shown in thousand AMD, adjusted to 2023 prices. For each region, the plot shows changes in three key metrics: lower decile (1st decile), median income, and upper decile (9th decile). Blue arrows indicate growth; red arrows indicate decline."}
+```{r regional_disparity_plot, fig.width=10, fig.height=7, fig.cap="Changes in Household Income by Region (2020-2023). Values shown in thousand AMD, adjusted to 2023 prices. For each region, the plot shows changes in three key metrics: lower decile (1st decile), median income, and upper decile (9th decile). Blue arrows indicate growth; red arrows indicate decline."}
 years_select = c(2020, 2023)
 
 date_legend <- 
@@ -558,6 +565,8 @@ plot_household_change_in_2_years <-
     )
   )
 
+ggsave("plots/plot_household_change_in_2_years.png", plot_household_change_in_2_years, width = 10, height = 7)
+
 print(plot_household_change_in_2_years)
 ```
 
@@ -600,7 +609,7 @@ income_brackets_2023 <-
   mutate(pct = n/sum(n) * 100)
 ```
 
-```{r income_distribution_plot_2, fig.cap="Evolution of Household Income Distribution in Armenia (2005-2023). Distribution of household income by brackets, with incomes adjusted to 2023 prices. The progression shows a significant reduction in lower income brackets and expansion of middle-income groups."}
+```{r income_distribution_plot_2, fig.width=10, fig.height=7, fig.cap="Evolution of Household Income Distribution in Armenia (2005-2023). Distribution of household income by brackets, with incomes adjusted to 2023 prices. The progression shows a significant reduction in lower income brackets and expansion of middle-income groups."}
 plot_household_pct_change <-
   household_income_db |> 
   select(year, date, weight, marz, totincome) |> 
@@ -652,6 +661,8 @@ plot_household_pct_change <-
       linetype = 1
     )
   )
+
+ggsave("plots/plot_household_pct_change.png", plot_household_pct_change, width = 10, height = 7)
 
 print(plot_household_pct_change)
 ```
